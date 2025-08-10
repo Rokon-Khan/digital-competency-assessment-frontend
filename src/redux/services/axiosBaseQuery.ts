@@ -34,9 +34,9 @@ interface AxiosBaseQueryArgs {
   headers?: Record<string, string>;
 }
 
-const ACCESS_COOKIE = "da_at";
-const REFRESH_COOKIE = "da_rt";
-const ROLE_COOKIE = "da_role";
+const ACCESS_COOKIE = "accessToken";
+const REFRESH_COOKIE = "refreshToken";
+const ROLE_COOKIE = "role";
 
 const ACCESS_TTL_MIN = 120; // 2 hours
 const REFRESH_TTL_DAYS = 7; // 7 days
@@ -152,16 +152,16 @@ export const axiosBaseQuery =
         )
       ) {
         const {
-          accessToken: at,
-          refreshToken: rt,
+          accessToken: accessToken,
+          refreshToken: refreshToken,
           role,
           supervisorApproved,
           isApproved,
         } = (result.data as any) || {};
-        if (at || rt || role) {
+        if (accessToken || refreshToken || role) {
           setAuthCookies({
-            accessToken: at,
-            refreshToken: rt,
+            accessToken: accessToken,
+            refreshToken: refreshToken,
             role,
             supervisorApproved,
             isApproved,
@@ -169,8 +169,8 @@ export const axiosBaseQuery =
           // Keep Redux state in sync
           api.dispatch(
             setCredentials({
-              accessToken: at,
-              refreshToken: rt,
+              accessToken: accessToken,
+              refreshToken: refreshToken,
               role,
               supervisorApproved,
               isApproved,
