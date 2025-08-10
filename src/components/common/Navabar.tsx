@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,6 +8,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAppDispatch } from "@/hooks/useAppDisPatch";
+import { useAppSelector } from "@/hooks/useAppSelector";
+import { logout as logoutAction } from "@/redux/fetures/authSlice";
+import { setTheme } from "@/redux/fetures/themeSlice"; // adjust path if needed
+import {
+  useGetMeQuery,
+  useLogoutMutation,
+} from "@/redux/services/assessmentApi";
+import Cookies from "js-cookie";
 import {
   BarChart3,
   GraduationCap,
@@ -14,45 +25,67 @@ import {
   Monitor,
   Moon,
   Sun,
-  User,
+  User as UserIcon,
 } from "lucide-react";
 import React from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Link, useLocation } from "react-router";
-// import { RootState } from '../../store';
-import { setTheme } from "@/redux/fetures/themeSlice";
-import type { RootState } from "@/redux/store";
-// import { logout } from "@/store/slices/authSlice";
+import { Link, useLocation, useNavigate } from "react-router";
+import { toast } from "sonner";
+
+type Theme = "light" | "dark" | "system";
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
-  const dispatch = useDispatch();
-  const { theme } = useSelector((state: RootState) => state.theme);
-  const { isAuthenticated, user } = useSelector(
-    (state: RootState) => state.auth || undefined || {}
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { role, supervisorApproved, isApproved } = useAppSelector(
+    (s) => s.auth
   );
-  //   const handleLogout = () => {
-  //     dispatch(logout());
-  //   };
+  const themeState = useAppSelector((s: any) => s.theme?.theme);
+  const { data: me } = useGetMeQuery(undefined, {
+    skip: !role, // only when logged in
+  });
 
-  const getThemeIcon = () => {
-    switch (theme) {
-      case "light":
-        return <Sun className="h-4 w-4" />;
-      case "dark":
-        return <Moon className="h-4 w-4" />;
-      default:
-        return <Monitor className="h-4 w-4" />;
+  const [logoutReq] = useLogoutMutation();
+
+  const approved =
+    role === "supervisor" ? supervisorApproved ?? isApproved : true;
+
+  const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = async () => {
+    try {
+      await logoutReq(undefined).unwrap();
+    } catch {
+      /* ignore backend logout failure */
+    } finally {
+      Cookies.remove("accessToken");
+      Cookies.remove("refreshToken");
+      dispatch(logoutAction());
+      toast.success("Logged out");
+      navigate("/login");
     }
   };
 
-  const isActive = (path: string) => location.pathname === path;
+  const userName = me?.user?.profile?.name;
+  const avatarUrl = me?.user?.profile?.avatarUrl;
+  const fallback =
+    (userName && userName.charAt(0).toUpperCase()) ||
+    me?.user?.email?.charAt(0).toUpperCase() ||
+    "U";
+
+  const switchTheme = (val: Theme) => dispatch(setTheme(val));
+
+  const themeIcon = () => {
+    if (themeState === "light") return <Sun className="h-4 w-4" />;
+    if (themeState === "dark") return <Moon className="h-4 w-4" />;
+    return <Monitor className="h-4 w-4" />;
+  };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo and Brand */}
+          {/* Brand */}
           <Link
             to="/"
             className="flex items-center space-x-3 hover:opacity-80 transition-smooth"
@@ -61,18 +94,18 @@ export const Navbar: React.FC = () => {
               <GraduationCap className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Test_School</h1>
+              <h1 className="text-xl font-bold">Test_School</h1>
               <p className="text-xs text-muted-foreground">
                 Digital Competency Platform
               </p>
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Nav */}
           <div className="hidden md:flex items-center space-x-6">
             <Link
               to="/"
-              className={`text-sm font-medium transition-smooth px-3 py-2 rounded-md ${
+              className={`text-sm font-medium px-3 py-2 rounded-md transition-smooth ${
                 isActive("/")
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -81,19 +114,19 @@ export const Navbar: React.FC = () => {
               Home
             </Link>
             <Link
-              to="/quiz"
-              className={`text-sm font-medium transition-smooth px-3 py-2 rounded-md ${
-                isActive("/quiz")
+              to="/assessment"
+              className={`text-sm font-medium px-3 py-2 rounded-md transition-smooth ${
+                isActive("/assessment")
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
               }`}
             >
               Assessment
             </Link>
-            {isAuthenticated && (
+            {role && (
               <Link
                 to="/dashboard"
-                className={`text-sm font-medium transition-smooth px-3 py-2 rounded-md ${
+                className={`text-sm font-medium px-3 py-2 rounded-md transition-smooth ${
                   isActive("/dashboard")
                     ? "text-primary bg-primary/10"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -102,10 +135,10 @@ export const Navbar: React.FC = () => {
                 Dashboard
               </Link>
             )}
-            {isAuthenticated && user?.role === "admin" && (
+            {role === "admin" && (
               <Link
                 to="/admin"
-                className={`text-sm font-medium transition-smooth px-3 py-2 rounded-md flex items-center gap-2 ${
+                className={`text-sm font-medium px-3 py-2 rounded-md flex items-center gap-2 transition-smooth ${
                   isActive("/admin")
                     ? "text-primary bg-primary/10"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -117,69 +150,84 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Right side controls */}
-          <div className="flex items-center space-x-4">
-            {/* Theme Toggle */}
+          {/* Right Controls */}
+          <div className="flex items-center gap-3">
+            {/* Theme */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="hover:bg-accent">
-                  {getThemeIcon()}
+                  {themeIcon()}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="animate-scale-in">
-                <DropdownMenuItem onClick={() => dispatch(setTheme("light"))}>
-                  <Sun className="mr-2 h-4 w-4" />
-                  Light
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => switchTheme("light")}>
+                  <Sun className="mr-2 h-4 w-4" /> Light
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => dispatch(setTheme("dark"))}>
-                  <Moon className="mr-2 h-4 w-4" />
-                  Dark
+                <DropdownMenuItem onClick={() => switchTheme("dark")}>
+                  <Moon className="mr-2 h-4 w-4" /> Dark
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => dispatch(setTheme("system"))}>
-                  <Monitor className="mr-2 h-4 w-4" />
-                  System
+                <DropdownMenuItem onClick={() => switchTheme("system")}>
+                  <Monitor className="mr-2 h-4 w-4" /> System
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* User Menu */}
-            {isAuthenticated ? (
+            {/* Auth */}
+            {role ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2 hover:bg-accent">
-                    <User className="h-4 w-4" />
-                    <span className="hidden sm:inline">{user?.firstName}</span>
+                  <Button
+                    variant="ghost"
+                    className="px-2 py-1.5 hover:bg-accent gap-2"
+                  >
+                    <Avatar className="h-8 w-8">
+                      {avatarUrl && (
+                        <AvatarImage src={avatarUrl} alt={userName} />
+                      )}
+                      <AvatarFallback>{fallback}</AvatarFallback>
+                    </Avatar>
+                    <span className="hidden md:inline text-sm font-medium max-w-[120px] truncate">
+                      {userName || me?.user?.email}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56 animate-scale-in"
-                >
+                <DropdownMenuContent align="end" className="w-60">
+                  <div className="px-2 py-2 text-xs text-muted-foreground">
+                    <p className="font-medium">{userName || me?.user?.email}</p>
+                    <p>
+                      Role: {role}
+                      {role === "supervisor" &&
+                        ` (${approved ? "Approved" : "Pending"})`}
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link to="/profile" className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
+                      <UserIcon className="h-4 w-4 mr-2" />
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/dashboard" className="cursor-pointer">
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                      Dashboard
-                    </Link>
-                  </DropdownMenuItem>
+                  {role === "admin" && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="cursor-pointer">
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    // onClick={handleLogout}
+                    onClick={handleLogout}
                     className="text-destructive cursor-pointer"
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
+                    <LogOut className="h-4 w-4 mr-2" />
                     Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-2">
-                <Button variant="ghost" asChild>
+              <div className="hidden md:flex items-center gap-2">
+                <Button variant="outline" asChild>
                   <Link to="/login">Login</Link>
                 </Button>
                 <Button variant="hero" asChild>
@@ -188,7 +236,7 @@ export const Navbar: React.FC = () => {
               </div>
             )}
 
-            {/* Mobile Menu */}
+            {/* Mobile menu */}
             <div className="md:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -196,33 +244,42 @@ export const Navbar: React.FC = () => {
                     <Menu className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56 animate-scale-in"
-                >
+                <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem asChild>
-                    <Link to="/" className="cursor-pointer">
-                      Home
-                    </Link>
+                    <Link to="/">Home</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/quiz" className="cursor-pointer">
-                      Assessment
-                    </Link>
+                    <Link to="/assessment">Assessment</Link>
                   </DropdownMenuItem>
-                  {isAuthenticated && (
+                  {role && (
                     <DropdownMenuItem asChild>
-                      <Link to="/dashboard" className="cursor-pointer">
-                        Dashboard
-                      </Link>
+                      <Link to="/dashboard">Dashboard</Link>
                     </DropdownMenuItem>
                   )}
-                  {isAuthenticated && user?.role === "admin" && (
+                  {role === "admin" && (
                     <DropdownMenuItem asChild>
-                      <Link to="/admin" className="cursor-pointer">
-                        Admin Panel
-                      </Link>
+                      <Link to="/admin">Admin Panel</Link>
                     </DropdownMenuItem>
+                  )}
+                  {role && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Logout
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {!role && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to="/login">Login</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/signup">Sign Up</Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

@@ -1,24 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/**
- * axiosBaseQuery with cookie-based token storage (no localStorage).
- *
- * What this does:
- *  - Reads accessToken, refreshToken, role from cookies before each request.
- *  - Adds Authorization header with accessToken (if present).
- *  - On 401, attempts a single refresh using refreshToken cookie.
- *  - If refresh succeeds, updates accessToken cookie and retries the original request.
- *  - If refresh fails, clears auth cookies and dispatches logout.
- *
- * Assumptions:
- *  - Backend still returns { accessToken, refreshToken, role, ... } in /auth/login & /auth/refresh-token responses.
- *  - Cookies are allowed (same-site or cross-site configuration as needed).
- *  - You have updated your authSlice to STOP using localStorage (remove loadFromStorage/setCredentials persistence code).
- *
- * Recommended BACKEND improvement (safer):
- *  - Send refreshToken as HttpOnly Secure SameSite=Strict cookie from backend instead of JSON body.
- *  - Keep accessToken in memory or short-lived cookie (non-HttpOnly only if you must).
- * For now we set both in JS-managed cookies as per your request.
- */
 
 import type { BaseQueryFn } from "@reduxjs/toolkit/query";
 import axios, { AxiosError, type AxiosRequestConfig } from "axios";

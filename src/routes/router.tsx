@@ -5,6 +5,7 @@ import OTPVerificationPage from "@/pages/auth/OTPVerificationPage";
 import SignupPage from "@/pages/auth/SignupPage";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/NotFound";
+import ProfilePage from "@/pages/ProfilePage";
 import { createBrowserRouter } from "react-router";
 
 const router = createBrowserRouter([
@@ -15,7 +16,8 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: "login", element: <LoginPage /> },
       { path: "signup", element: <SignupPage /> },
-      { path: "otp-verification", element: <OTPVerificationPage /> },
+      { path: "verify-otp", element: <OTPVerificationPage /> },
+      { path: "profile", element: <ProfilePage /> },
     ],
   },
   {
