@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * axiosBaseQuery with cookie-based token storage (no localStorage).
@@ -25,7 +24,7 @@ import type { BaseQueryFn } from "@reduxjs/toolkit/query";
 import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 import Cookies from "js-cookie";
 import { logout, setCredentials } from "../fetures/authSlice";
-import type { RootState } from "../store";
+// import type { RootState } from "../store";
 
 interface AxiosBaseQueryArgs {
   url: string;
@@ -120,7 +119,7 @@ export const axiosBaseQuery =
     { status?: number; data?: any }
   > =>
   async (args, api) => {
-    const state = api.getState() as RootState;
+    // const state = api.getState() as RootState; // Removed unused variable
 
     // Always read the freshest cookies
     const accessToken = Cookies.get(ACCESS_COOKIE);
